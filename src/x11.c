@@ -33,7 +33,7 @@ int init_window_system(void)
     return 0;
 }
 
-void *get_active_window(void)
+bool update_active_window(void)
 {
     XFree(ActiveWindow.title);
     XFree(ActiveWindow.class);
@@ -47,11 +47,17 @@ void *get_active_window(void)
     int result = XGetWindowProperty(Con, XDefaultRootWindow(Con),
                                     NetActiveWindow, 0, sizeof(Window), False,
                                     XA_WINDOW, &type, &format, &nitems, &bytesAfter, &prop);
-    if (result == Success && prop != NULL) {
-        ActiveWindow.window = *(Window*) prop;
-        XFree(prop);
-    } else {
-        return NULL;
+    if (result != Success || prop == NULL) {
+        return false;
+    }
+    ActiveWindow.window = *(Window*) prop;
+    XFree(prop);
+    if (ActiveWindow.window == None) {
+        /* desktop is focused (no window) */
+        ActiveWindow.title = NULL;
+        ActiveWindow.class = NULL;
+        ActiveWindow.instance = NULL;
+        return false;
     }
 
     XTextProperty text;
@@ -71,5 +77,20 @@ void *get_active_window(void)
         ActiveWindow.class = hint.res_class;
         ActiveWindow.instance = hint.res_name;
     }
+    return true;
+}
+
+char *get_window_title(void)
+{
     return ActiveWindow.title;
+}
+
+char *get_window_name(void)
+{
+    return ActiveWindow.class;
+}
+
+char *get_window_instance(void)
+{
+    return ActiveWindow.instance;
 }
