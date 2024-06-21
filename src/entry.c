@@ -6,7 +6,30 @@
 
 struct entry_list Entries;
 
-bool search_entry(const char *title, size_t *pIndex)
+static int null_strcmp(const char *s1, const char *s2)
+{
+    if (s1 == NULL) {
+        return s2 == NULL ? 0 : -1;
+    }
+    if (s2 == NULL) {
+        return 1;
+    }
+    return strcmp(s1, s2);
+}
+
+static int compare_entry_strings(const struct entry *e1, const struct entry *e2)
+{
+    int cmp = null_strcmp(e1->name, e2->name);
+    if (cmp == 0) {
+        cmp = null_strcmp(e1->instance, e2->instance);
+        if (cmp == 0) {
+            cmp = null_strcmp(e1->title, e2->title);
+        }
+    }
+    return cmp;
+}
+
+bool search_entry(const struct entry *entry, size_t *pIndex)
 {
     size_t l, r;
 
@@ -14,7 +37,8 @@ bool search_entry(const char *title, size_t *pIndex)
     r = Entries.n;
     while (l < r) {
         const size_t m = (l + r) / 2;
-        const int cmp = strcmp(Entries.p[m].title, title);
+
+        const int cmp = compare_entry_strings(&Entries.p[m], entry);
         if (cmp == 0) {
             if (pIndex != NULL) {
                 *pIndex = m;
@@ -33,7 +57,7 @@ bool search_entry(const char *title, size_t *pIndex)
     return false;
 }
 
-void add_entry(const char *title, struct timespec t1, struct timespec t2)
+struct entry *add_entry(struct entry *entry, struct timespec t1, struct timespec t2)
 {
     struct entry *p = NULL;
     struct timespec td;
@@ -55,7 +79,7 @@ void add_entry(const char *title, struct timespec t1, struct timespec t2)
         }
     }
 
-    if (search_entry(title, &index)) {
+    if (search_entry(entry, &index)) {
         p = &Entries.p[index];
         if (cmp_timespec(p->first, t1) > 0) {
             p->first = t1;
@@ -64,7 +88,7 @@ void add_entry(const char *title, struct timespec t1, struct timespec t2)
         if (cmp_timespec(p->last, t2) < 0) {
             p->last = t2;
         }
-        return;
+        return p;
     }
 
     if (Entries.n >= Entries.a) {
@@ -79,11 +103,13 @@ void add_entry(const char *title, struct timespec t1, struct timespec t2)
     memmove(p + 1, p, sizeof(*p) * (Entries.n - index));
     Entries.n++;
 
-    p->title = strdup(title);
-    assert(p->title != NULL);
+    p->name = entry->name;
+    p->instance = entry->instance;
+    p->title = entry->title;
     p->first = t1;
     p->spent = td;
     p->last = t2;
+    return p;
 }
 
 static int compare_spent_time(const void *a, const void *b)
@@ -110,10 +136,10 @@ void entry_status(FILE *fp)
             Entries.spent.tv_sec / 3600, (Entries.spent.tv_sec / 60) % 60, Entries.spent.tv_sec % 60);
     fprintf(fp, "last: %s", ctime(&Entries.last.tv_sec));
 
-    struct timespec t1 = sub_timespec(Entries.last, Entries.first);
-    struct timespec days = ldouble_to_timespec(timespec_to_days(t1));
-    struct timespec avg = div_timespec(Entries.spent, days);
-    double perc = 100 * timespec_to_ldouble(avg) / NANOS_PER_SECOND / SECONDS_PER_DAY;
+    const struct timespec dt = sub_timespec(Entries.last, Entries.first);
+    struct timespec avg = div_timespec(Entries.spent, dt);
+    const double perc = 100 * timespec_to_ldouble(avg) / NANOS_PER_SECOND;
+    avg = ldouble_to_timespec(SECONDS_PER_DAY * timespec_to_ldouble(avg));
     fprintf(fp, "\nspent an average of %ld hours, %ld minutes, %ld seconds per day (%%%lf of the day)\n",
             avg.tv_sec / 3600, (avg.tv_sec / 60) % 60, avg.tv_sec % 60, perc);
 

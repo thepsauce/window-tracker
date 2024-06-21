@@ -33,7 +33,7 @@ int main(int argc, char **argv)
             read_tracks(&p);
         }
 
-        printf("read %zu track files of witch %zu were misformatted\n",
+        fprintf(stderr, "read %zu track files of witch %zu were misformatted\n",
                 p.numFiles, p.numMisformatted);
 
         entry_status(stdout);
@@ -58,35 +58,44 @@ int main(int argc, char **argv)
     fp = fopen("file.track", "wb");
     setvbuf(fp, NULL, _IONBF, 0);
 
-    fwrite(FILE_VERSION, 1, STRING_SIZE(FILE_VERSION), fp);
     fwrite(FILE_HEADER, 1, STRING_SIZE(FILE_HEADER), fp);
+    fwrite(FILE_VERSION, 1, STRING_SIZE(FILE_VERSION), fp);
 
     if (ferror(fp) != 0) {
-        /* handle error */
+        /* TODO: handle error */
         /* We can not just quit as this process might have been
          * started in the background on system start which
          * means the user will have no clue that the program
          * is not working. If any error happens here,
          * there needs to be found a way to recover.
          */
+        /* TODO: this error checking needs to be added everywhere,
+         * what if the file is deleted or corrupted or somehow lost
+         */
     }
 
-    struct timespec real;
     struct timespec start, end, diff;
 
     static char *recov = "OUT OF MEMORY";
     char *old = NULL;
 
-    clock_gettime(CLOCK_REALTIME, &real);
-    clock_gettime(CLOCK_BOOTTIME, &start);
-    fprintf(stdout, "now: %s", ctime(&real.tv_sec));
-
-    fwrite(&real, sizeof(real), 1, fp);
+    clock_gettime(CLOCK_REALTIME, &start);
     fwrite(&start, sizeof(start), 1, fp);
     while (1) {
-        clock_gettime(CLOCK_BOOTTIME, &end);
+        clock_gettime(CLOCK_REALTIME, &end);
         diff = sub_timespec(end, start);
-        while (diff.tv_sec > 0) {
+        if (diff.tv_sec > 1) {
+            /* too much time passed... */
+            start = end;
+            fputc(FILE_TIME_ADJUST, fp);
+            fwrite(&end, sizeof(end), 1, fp);
+            continue;
+        }
+        if (diff.tv_sec < 0) {
+            /* the user set the time back */
+            /* TODO: */
+        }
+        if (diff.tv_sec > 0) {
             fputc(FILE_TIME_PASSED, fp);
             diff.tv_sec--;
             start.tv_sec++;
@@ -108,6 +117,8 @@ int main(int argc, char **argv)
                     strcmp(old + ln + 1, i) != 0 ||
                     strcmp(old + ln + 1 + li + 1, t) != 0) {
                 fputc(FILE_FOCUS_CHANGE, fp);
+                fwrite(&diff.tv_nsec, sizeof(diff.tv_nsec), 1, fp);
+                start.tv_nsec = end.tv_nsec;
                 if (old != recov) {
                     free(old);
                 }
@@ -130,6 +141,8 @@ int main(int argc, char **argv)
             }
             old = NULL;
             fputc(FILE_FOCUS_NULL, fp);
+            fwrite(&diff.tv_nsec, sizeof(diff.tv_nsec), 1, fp);
+            start.tv_nsec = end.tv_nsec;
         }
         /* 100 millisecond sleep */
         usleep(100000);

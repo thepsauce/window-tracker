@@ -7,6 +7,8 @@
 #include <stdio.h>
 
 struct entry {
+    char *name;
+    char *instance;
     char *title;
     struct timespec first;
     struct timespec spent;
@@ -21,8 +23,8 @@ extern struct entry_list {
     struct timespec last;
 } Entries;
 
-bool search_entry(const char *title, size_t *pIndex);
-void add_entry(const char *title, struct timespec t1, struct timespec t2);
+bool search_entry(const struct entry *entry, size_t *pIndex);
+struct entry *add_entry(struct entry *entry, struct timespec t1, struct timespec t2);
 void entry_status(FILE *fp);
 
 #endif

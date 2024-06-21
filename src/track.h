@@ -3,12 +3,12 @@
 
 #include <stddef.h>
 
-#define FILE_VERSION "\x00\x01"
-
 #define FILE_HEADER "WTF"
 
+#define FILE_VERSION "\x00\x01"
+
 /* file format:
- * \x00\x01WTF
+ * WTF\x00\x01
  * <real time> <boot time> (struct timespec)
  *
  * <class name> <class instance> <title> (all null terminated)
@@ -27,6 +27,7 @@
 #define FILE_FOCUS_NULL '\x00'
 #define FILE_FOCUS_CHANGE '\x01'
 #define FILE_TIME_PASSED '\x02'
+#define FILE_TIME_ADJUST '\x03'
 
 struct parse_track {
     const char *file;

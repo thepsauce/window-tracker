@@ -47,7 +47,7 @@ long double timespec_to_ldouble(struct timespec t)
 struct timespec ldouble_to_timespec(long double d)
 {
     struct timespec t;
-    t.tv_sec = d;
+    t.tv_sec = d / NANOS_PER_SECOND;
     t.tv_nsec = (d - t.tv_sec) * NANOS_PER_SECOND;
     return t;
 }

@@ -39,14 +39,15 @@ bool update_active_window(void)
     XFree(ActiveWindow.class);
     XFree(ActiveWindow.instance);
 
-    unsigned long nitems;
+    unsigned long numItems;
     Atom type;
     int format;
     unsigned long bytesAfter;
     unsigned char *prop = NULL;
     int result = XGetWindowProperty(Con, XDefaultRootWindow(Con),
                                     NetActiveWindow, 0, sizeof(Window), False,
-                                    XA_WINDOW, &type, &format, &nitems, &bytesAfter, &prop);
+                                    XA_WINDOW, &type, &format,
+                                    &numItems, &bytesAfter, &prop);
     if (result != Success || prop == NULL) {
         return false;
     }
