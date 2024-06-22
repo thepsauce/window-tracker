@@ -35,9 +35,6 @@ struct parse_track {
     char *title, *data;
     size_t capTitle, capData;
 
-    char **words;
-    size_t numWords;
-
     size_t numFiles, numMisformatted;
 };
 

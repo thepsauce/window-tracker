@@ -1,5 +1,5 @@
 __PROJECT_FILE=true
 project_name="tracker"
 project_source_dirs=( "src" )
-project_common_flags=( -std=gnu99 -Wall -Wextra -Werror -Wpedantic "-Isrc" -pedantic-errors -g )
+project_common_flags=( "-fsanitize=address" "-g" "-Isrc" "-pedantic-errors" "-std=gnu99" "-Wall" "-Werror" "-Wextra" "-Wpedantic" )
 project_linker_libs=( "-lX11" )

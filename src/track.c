@@ -12,16 +12,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-static bool parse_matches(struct parse_track *p, const char *s)
-{
-    for (size_t i = 0; i < p->numWords; i++) {
-        if (strcasestr(s, p->words[i]) == NULL) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static int parse_legacy_file(struct parse_track *p, FILE *fp)
 {
     for (p->line = 1;; p->line++) {
@@ -37,10 +27,6 @@ static int parse_legacy_file(struct parse_track *p, FILE *fp)
         ssize_t lenData = getline(&p->data, &p->capData, fp);
         if (lenData <= 0) {
             return -1;
-        }
-
-        if (!parse_matches(p, p->title)) {
-            continue;
         }
 
         bool hasStart = false;

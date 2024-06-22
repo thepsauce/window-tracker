@@ -24,7 +24,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    if (Args.numTrackFiles > 0) {
+    if (argc > 1) {
         struct parse_track p;
 
         memset(&p, 0, sizeof(p));
@@ -38,9 +38,12 @@ int main(int argc, char **argv)
 
         entry_status(stdout);
 
-        printf("\nend of reports for");
-        for (size_t i = 0; i < Args.numTrackFiles; i++) {
-            printf(" '%s'", Args.trackFiles[i]);
+        printf("\nend of reports");
+        if (Args.numFilterWords > 0) {
+            printf(" for");
+            for (size_t i = 0; i < Args.numFilterWords; i++) {
+                printf(" '%s'", Args.filterWords[i]);
+            }
         }
         printf("\n");
 

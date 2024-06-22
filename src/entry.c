@@ -1,3 +1,4 @@
+#include "args.h"
 #include "entry.h"
 
 #include <assert.h>
@@ -63,6 +64,13 @@ struct entry *add_entry(struct entry *entry, struct timespec t1, struct timespec
     struct timespec td;
     size_t index;
 
+    if (!is_not_filtered_out(entry->title)) {
+        free(entry->name);
+        free(entry->instance);
+        free(entry->title);
+        return NULL;
+    }
+
     td = sub_timespec(t2, t1);
 
     if (Entries.n == 0) {
@@ -80,6 +88,10 @@ struct entry *add_entry(struct entry *entry, struct timespec t1, struct timespec
     }
 
     if (search_entry(entry, &index)) {
+        free(entry->name);
+        free(entry->instance);
+        free(entry->title);
+
         p = &Entries.p[index];
         if (cmp_timespec(p->first, t1) > 0) {
             p->first = t1;
@@ -137,9 +149,16 @@ void entry_status(FILE *fp)
     fprintf(fp, "last: %s", ctime(&Entries.last.tv_sec));
 
     const struct timespec dt = sub_timespec(Entries.last, Entries.first);
-    struct timespec avg = div_timespec(Entries.spent, dt);
-    const double perc = 100 * timespec_to_ldouble(avg) / NANOS_PER_SECOND;
-    avg = ldouble_to_timespec(SECONDS_PER_DAY * timespec_to_ldouble(avg));
+    struct timespec avg;
+    double perc;
+    if (dt.tv_sec < SECONDS_PER_DAY) {
+        avg = Entries.spent;
+        perc = 100 * timespec_to_ldouble(avg) / NANOS_PER_SECOND / SECONDS_PER_DAY;
+    } else {
+        avg = div_timespec(Entries.spent, dt);
+        perc = 100 * timespec_to_ldouble(avg) / NANOS_PER_SECOND;
+        avg = ldouble_to_timespec(SECONDS_PER_DAY * timespec_to_ldouble(avg));
+    }
     fprintf(fp, "\nspent an average of %ld hours, %ld minutes, %ld seconds per day (%%%lf of the day)\n",
             avg.tv_sec / 3600, (avg.tv_sec / 60) % 60, avg.tv_sec % 60, perc);
 
