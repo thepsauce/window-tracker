@@ -6,10 +6,12 @@
 
 extern struct program_arguments {
     bool needsHelp;
-    char *const *trackFiles;
+    char **trackFiles;
     size_t numTrackFiles;
-    char *const *filterWords;
+    char **filterWords;
     size_t numFilterWords;
+    char *output;
+    char *format;
 } Args;
 
 bool is_not_filtered_out(const char *s);

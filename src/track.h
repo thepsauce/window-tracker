@@ -31,7 +31,11 @@
 
 struct parse_track {
     const char *file;
+    /* either line or byte is used for printing information
+     * depending on the file type
+     */
     size_t line;
+    long byte;
     char *title, *data;
     size_t capTitle, capData;
 

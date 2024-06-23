@@ -141,6 +141,8 @@ static int parse_track_file_v01(struct parse_track *p, FILE *fp)
 
 static int parse_track_file(struct parse_track *p, FILE *fp)
 {
+    p->line = 0;
+
     char version[2];
     if (fread(version, 1, sizeof(version), fp) != sizeof(version)) {
         return -1;
@@ -178,6 +180,7 @@ int read_track_file(struct parse_track *p)
         result = parse_legacy_file(p, fp);
     }
 
+    p->byte = ftell(fp);
     fclose(fp);
     return result;
 }
@@ -215,10 +218,17 @@ int read_tracks(struct parse_track *p)
             p->numFiles++;
             p->file = ent->d_name;
             if (read_track_file(p) < 0) {
-                fprintf(stderr, "misformatted file: %s:%zu\n", p->file, p->line);
+                if (p->line == 0) {
+                    fprintf(stderr, "misformatted file: %s (around byte no. %ld)\n",
+                            p->file, p->byte);
+                } else {
+                    fprintf(stderr, "misformatted file: %s (at line no. %zu)\n",
+                            p->file, p->line);
+                }
                 p->numMisformatted++;
             }
         }
+        closedir(dir);
     } else if (type == S_IFREG) {
         read_track_file(p);
     }
