@@ -91,9 +91,6 @@ static int parse_track_file_v01(struct parse_track *p, FILE *fp)
     struct entry e;
     struct timespec tv;
 
-    if (fread(&now, sizeof(now), 1, fp) != 1) {
-        return 1;
-    }
     tv.tv_sec = 0;
     for (int c; (c = fgetc(fp)) != EOF; ) {
         if (c == FILE_FOCUS_NULL || c == FILE_FOCUS_CHANGE) {

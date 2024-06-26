@@ -47,6 +47,7 @@ static int stream_open(struct stream *s)
             return -1;
         }
         s->fp = fopen(get_next_file_name(), "wb");
+        exists = false;
     } else {
         s->fp = fopen(s->fileName, "ab");
     }
@@ -71,14 +72,11 @@ static int stream_open(struct stream *s)
     return 0;
 }
 
-int stream_write(struct stream *s, void *data, size_t size, size_t nmemb)
+static int stream_write(struct stream *s, void *data, size_t size, size_t nmemb)
 {
-    /* things that can go wrong:
-     * 1. file was destroyed
-     * 2. access lost
-     * 3. other
-     */
     const int maxTries = 5;
+
+again:
     if (fwrite(data, size, nmemb, s->fp) != nmemb) {
         if (access(s->fileName, W_OK | F_OK) != 0) {
             switch (errno) {
@@ -89,7 +87,7 @@ int stream_write(struct stream *s, void *data, size_t size, size_t nmemb)
                 fclose(s->fp);
                 for (int tries = maxTries;; tries--) {
                     if (stream_open(s) == 0) {
-                        break;
+                        goto again;
                     }
                     if (tries == 0) {
                         s->fp = NULL;
@@ -112,7 +110,12 @@ backup:
     if (s->fp == NULL) {
         return -1;
     }
-    return 1;
+    goto again;
+}
+
+static int stream_put(struct stream *s, char ch)
+{
+    return stream_write(s, &ch, 1, 1);
 }
 
 void stream_track_data(const char *fileName)
@@ -128,23 +131,24 @@ void stream_track_data(const char *fileName)
     char *old = NULL;
 
     clock_gettime(CLOCK_REALTIME, &start);
-    fwrite(&start, sizeof(start), 1, s.fp);
+    stream_put(&s, FILE_TIME_ADJUST);
+    stream_write(&s, &start, sizeof(start), 1);
     while (1) {
         clock_gettime(CLOCK_REALTIME, &end);
         diff = sub_timespec(end, start);
         if (diff.tv_sec > 1) {
             /* too much time passed... */
             start = end;
-            fputc(FILE_TIME_ADJUST, s.fp);
-            fwrite(&end, sizeof(end), 1, s.fp);
+            stream_put(&s, FILE_TIME_ADJUST);
+            stream_write(&s, &end, sizeof(end), 1);
             continue;
         }
         if (diff.tv_sec < 0) {
             /* the user set the time back */
-            /* TODO: */
+            /* TODO: maybe nothing? */
         }
         if (diff.tv_sec > 0) {
-            fputc(FILE_TIME_PASSED, s.fp);
+            stream_put(&s, FILE_TIME_PASSED);
             diff.tv_sec--;
             start.tv_sec++;
             start.tv_nsec = NANOS_PER_SECOND - start.tv_nsec;
@@ -164,8 +168,8 @@ void stream_track_data(const char *fileName)
             if (old == NULL || strcmp(old, n) != 0 ||
                     strcmp(old + ln + 1, i) != 0 ||
                     strcmp(old + ln + 1 + li + 1, t) != 0) {
-                fputc(FILE_FOCUS_CHANGE, s.fp);
-                fwrite(&diff.tv_nsec, sizeof(diff.tv_nsec), 1, s.fp);
+                stream_put(&s, FILE_FOCUS_CHANGE);
+                stream_write(&s, &diff.tv_nsec, sizeof(diff.tv_nsec), 1);
                 start.tv_nsec = end.tv_nsec;
                 if (old != recov) {
                     free(old);
@@ -188,8 +192,8 @@ void stream_track_data(const char *fileName)
                 free(old);
             }
             old = NULL;
-            fputc(FILE_FOCUS_NULL, s.fp);
-            fwrite(&diff.tv_nsec, sizeof(diff.tv_nsec), 1, s.fp);
+            stream_put(&s, FILE_FOCUS_NULL);
+            stream_write(&s, &diff.tv_nsec, sizeof(diff.tv_nsec), 1);
             start.tv_nsec = end.tv_nsec;
         }
         /* 100 millisecond sleep */
@@ -197,5 +201,5 @@ void stream_track_data(const char *fileName)
     }
 
     /* this point is never reached, the program is stopped with a signal */
-    fclose(s.fp);
+    //fclose(s.fp);
 }
